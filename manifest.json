@@ -1,0 +1,20 @@
+{
+  "manifest_version": 2,
+  "name": "BrowserStack Launcher",
+  "version": "0.0.1",
+  "description": "An extension to launch BrowserStack session with selected parameters.",
+  "icons": {},
+  "browser_action": {
+    "default_icon": "icon.png",
+    "default_popup": "index.html",
+    "default_title": "BrowserStack"
+  },
+  "background": {
+    "scripts": ["jquery-3.1.1.min.js"]
+  },
+  "permissions": [
+    "tabs",
+    "activeTab",
+    "https://www.browserstack.com/list-of-browsers-and-platforms.json?product=live"
+  ]
+}
