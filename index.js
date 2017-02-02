@@ -2,6 +2,20 @@ var REJECTED_TAB_URLS = ["chrome:", "about:"];
 var BASE_URL = "https://www.browserstack.com"
 var DEVICES_URL = BASE_URL + "/list-of-browsers-and-platforms.json?product=live";
 
+function SavedSettings() {
+  this.data = {};
+
+  this.load = function () {
+    this.data = JSON.parse(localStorage.getItem("bstack-extension-saved-settings"));
+    return;
+  };
+
+  this.persist = function() {
+    localStorage.setItem("bstack-extension-saved-settings", JSON.stringify(this.data));
+    return;
+  }
+}
+
 function getDeviceData() {
   return JSON.parse(localStorage.getItem("bstack-extension-devices"));
 }
@@ -11,7 +25,11 @@ function getOSList() {
 
   $.each(window._DeviceData, function(formFactor, osData) {
     $.each(osData, function(index, device) {
-      var d = { os: device.os, os_version: device.os_version, os_display_name: device.os_display_name };
+      var d = {
+        os: device.os,
+        os_version: device.os_version,
+        os_display_name: device.os_display_name
+      };
 
       if(osList[device.os]) {
         osList[device.os]["versions"].push(d);
@@ -22,6 +40,14 @@ function getOSList() {
   });
 
   return osList;
+}
+
+function getSelectedOSData(formFactor, selectedOS) {
+  return (
+    $.map(window._DeviceData[formFactor], function(os) {
+      if(os.os === selectedOS) { return os; }
+    })
+  )
 }
 
 function getBrowsers() {
@@ -66,10 +92,23 @@ function fetchDeviceDataFromUrl() {
   });
 }
 
+function addOSVersions(formFactor, selectedOS) {
+  $("#form-factor").val(formFactor);
+  $("#os-select").children("option[value='"+ selectedOS + "']").prop('selected', true);
+
+  var osVersions = getSelectedOSData(formFactor, selectedOS);
+  if(formFactor === "desktop") {
+    addOptionsForOSVersion(osVersions);
+  } else {
+    addOptionsForDeviceVersion(osVersions[0]["devices"]);
+  }
+}
+
 function addOsAndOsVersion() {
   $("#os-select").empty();
   var $osSelectElement = $("#os-select");
 
+  var userData = window._UserSettings.data;
   var osList = getOSList();
   var formFactor = "";
   var osVersions = [];
@@ -77,24 +116,20 @@ function addOsAndOsVersion() {
   var index = 0;
   $.each(osList, function(osName, osData) {
     if(index === 0) {
-      selectedOS = osName;
       formFactor = osData.form_factor;
-      osVersions = osData["versions"];
+      selectedOS = osName;
+    }
 
-      $("#form-factor").val(formFactor);
-      $osSelectElement.append("<option value='"+ osName + "' selected='selected' data-form-factor=" + osData.form_factor + ">" + osName + "</option>")
-    }
-    else {
-      $osSelectElement.append("<option value='" + osName + "' data-form-factor=" + osData.form_factor + ">" + osName + "</option>")
-    }
+    $osSelectElement.append("<option value='" + osName + "' data-form-factor=" + osData.form_factor + ">" + osName + "</option>")
     index++;
   });
 
-  if(formFactor === "desktop") {
-    addOptionsForOSVersion(osVersions);
-  } else {
-    addOptionsForDeviceVersion(osVersions[0]["devices"]);
+  if(userData && userData["form_factor"] && userData["os"]) {
+    formFactor = userData["form_factor"];
+    selectedOS = userData["os"];
   }
+
+  addOSVersions(formFactor, selectedOS);
 }
 
 function addOptionsForOSVersion(osVersions) {
@@ -114,6 +149,11 @@ function addOptionsForOSVersion(osVersions) {
       $osVersionSelectElement.append("<option value='" + os.os_version + "'>" + os.os_display_name + "</option>")
     }
   });
+
+  var userData = window._UserSettings.data;
+  if(userData && userData["form_factor"] && userData["os"] && userData["os_version"]) {
+    $osVersionSelectElement.children("option[value='"+ userData["os_version"] + "']").prop('selected', true);
+  }
 
   addOptionsForBrowser();
 }
@@ -136,6 +176,11 @@ function addOptionsForDeviceVersion(osVersions) {
       $deviceSelectElement.append("<option value='" + device.device + "'>" + device.display_name + "</option>")
     }
   });
+
+  var userData = window._UserSettings.data;
+  if(userData && userData["form_factor"] && userData["os"] && userData["device"]) {
+    $deviceSelectElement.children("option[value='"+ userData["device"] + "']").prop('selected', true);
+  }
 }
 
 function addOptionsForBrowser() {
@@ -151,6 +196,11 @@ function addOptionsForBrowser() {
       $browserSelectElement.append("<option value='" + browser + "'>" + browser + "</option>")
     }
   });
+
+  var userData = window._UserSettings.data;
+  if(userData && userData["form_factor"] && userData["os"] && userData["os_version"] && userData["browser"]) {
+    $browserSelectElement.children("option[value='"+ userData["browser"] + "']").prop('selected', true);
+  }
 
   addOptionsForBrowserVersion();
 }
@@ -172,6 +222,11 @@ function addOptionsForBrowserVersion() {
       $browserVersionSelectElement.append("<option value='" + browser.browser_version + "'>" + browser.display_name + "</option>")
     }
   });
+
+  var userData = window._UserSettings.data;
+  if(userData && userData["form_factor"] && userData["os"] && userData["os_version"] && userData["browser"] && userData["browser_version"]) {
+    $browserVersionSelectElement.children("option[value='"+ userData["browser_version"] + "']").prop('selected', true);
+  }
 }
 
 function buildUIForm() {
@@ -181,6 +236,8 @@ function buildUIForm() {
 
 $(document).ready(function() {
   window._DeviceData = getDeviceData();
+  window._UserSettings = new SavedSettings();
+  _UserSettings.load();
 
   chrome.tabs.query({active: true, currentWindow: true}, function(arrayOfTabs) {
     var activeTabURL = arrayOfTabs[0].url;
@@ -213,23 +270,31 @@ $(document).ready(function() {
   });
 
   $("#bs-form").on("change", "#os-select", function() {
-    var osName = $(this).val();
+    var selectedOS = $(this).val();
     var formFactor = $(this).children('option:selected').data("form-factor");
-    $("#form-factor").val(formFactor);
 
-    var osVersions = $.map(window._DeviceData[formFactor], function(os) {
-      if(os.os === osName) { return os; }
-    });
+    window._UserSettings.data = {
+      url: $("#url").val(),
+      form_factor: formFactor,
+      os: selectedOS,
+    };
+    window._UserSettings.persist();
 
-    if(formFactor === "desktop") {
-      addOptionsForOSVersion(osVersions);
-    } else {
-      addOptionsForDeviceVersion(osVersions[0]["devices"]);
-    }
+    addOSVersions(formFactor, selectedOS);
   });
 
   $("#bs-form").on("change", "#os-version-select", function() {
     var formFactor = $("#form-factor").val();
+
+    window._UserSettings.data = {
+      url: $("#url").val(),
+      form_factor: formFactor,
+      os: $("#os-select").val(),
+      os_version: $(this).val(),
+    };
+
+    window._UserSettings.persist();
+
     if(formFactor !== "desktop") { return; }
 
     addOptionsForBrowser();
@@ -237,9 +302,41 @@ $(document).ready(function() {
 
   $("#bs-form").on("change", "#browser-select", function() {
     var formFactor = $("#form-factor").val();
+
+    window._UserSettings.data = {
+      url: $("#url").val(),
+      form_factor: formFactor,
+      os: $("#os-select").val(),
+      os_version: $("#os-version-select").val(),
+      browser: $(this).val(),
+    };
+    window._UserSettings.persist();
+
     if(formFactor !== "desktop") { return; }
 
     addOptionsForBrowserVersion();
+  });
+
+  $("#bs-form").on("change", "#browser-version-select", function() {
+    window._UserSettings.data = {
+      url: $("#url").val(),
+      form_factor: $("#form-factor").val(),
+      os: $("#os-select").val(),
+      os_version: $("#os-version-select").val(),
+      browser: $("#browser-select").val(),
+      browser_version: $(this).val(),
+    };
+    window._UserSettings.persist();
+  });
+
+  $("#bs-form").on("change", "#device-select", function() {
+    window._UserSettings.data = {
+      url: $("#url").val(),
+      form_factor: $("#form-factor").val(),
+      os: $("#os-select").val(),
+      device: $(this).val()
+    };
+    window._UserSettings.persist();
   });
 
   $("#bs-form").submit(function(event) {
