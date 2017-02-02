@@ -1,0 +1,79 @@
+<html>
+  <head>
+    <title>BrowserStack</title>
+    <script src="jquery-3.1.1.min.js"></script>
+    <script src="index.js"></script>
+
+    <link rel="stylesheet" type="text/css" href="index.css">
+  </head>
+  <body>
+    <div class="container">
+      <div id="header">
+        <div class="header-title">
+          <img src="bstack-logo.png" alt="BrowserStack"></img>
+        </div>
+        <div class="refresh-btn">
+          <button id="refresh-browser-list">
+            <img src="refresh.png" title="Refresh browsers list"></img>
+          </button>
+        </div>
+      </div>
+
+      <div class="hr-separator"></div>
+
+      <form id="bs-form">
+        <input name="form_factor" type="hidden" id="form-factor" />
+        <input name="resolution" type="hidden" id="resolution" value="responsive-mode" />
+        <input name="start" type="hidden" id="start" value="true"/>
+        <input name="speed" type="hidden" id="speed" value="1" />
+
+        <div class="bs-url form-group">
+          <label class="control-label">URL</label>
+          <input name="url" type="text" id="url" class="form-control" />
+        </div>
+
+        <div class="bs-os-select form-group">
+          <label class="control-label">Select OS</label>
+          <select name="os" id="os-select" class="form-control">
+            <option></option>
+          </select>
+        </div>
+
+        <div class="bs-os-version-select form-group hide">
+          <label class="control-label">Select OS Version</label>
+          <select name="os_version" id="os-version-select" class="form-control">
+            <option></option>
+          </select>
+        </div>
+
+        <div class="bs-device-select form-group hide">
+          <label class="control-label">Select Device</label>
+          <select name="device" id="device-select" class="form-control">
+            <option></option>
+          </select>
+        </div>
+
+        <div class="bs-browser-select form-group hide">
+          <label class="control-label">Select Browser</label>
+          <select name="browser" id="browser-select" class="form-control">
+            <option></option>
+          </select>
+        </div>
+
+        <div class="bs-browser-version-select form-group hide">
+          <label class="control-label">Select Browser Version</label>
+          <select name="browser_version" id="browser-version-select" class="form-control">
+            <option></option>
+          </select>
+        </div>
+
+        <div class="hr-separator"></div>
+
+        <div>
+          <button type="submit" class="btn btn-success">Launch!</button>
+          <button type="button" class="btn btn-primary pull-right" id="sign-in">Sign In</button>
+        </div>
+      </div>
+    </form>
+  </body>
+</html>
